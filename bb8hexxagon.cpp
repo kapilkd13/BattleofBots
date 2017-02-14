@@ -1,5 +1,5 @@
     #include <bits/stdc++.h>
-
+#include<chrono>
 
     const double MAX = 10000;
     const double MIN = -10000;
@@ -7,13 +7,25 @@
     //using namespace std;
 
 
+
     typedef struct move{
     int ini_x,ini_y,fin_x,fin_y;
     bool isJump;
+    double movescore;
 
     }move;
 
     move finalMove;
+
+
+int Depth=2;
+std::vector<move> globalvec;
+std::chrono::time_point<std::chrono::system_clock> start, endpt;
+
+bool compareByScore(const move &a, const move &b)
+{
+    return a.movescore > b.movescore;
+}
 
     bool validCoord(int x,int y)
     {
@@ -751,8 +763,8 @@
     }
 
    double getGridScore(int grid[][7], int id)
-    {int score=0,count0=0,countpl=0,countoppo=0;
-
+    {int score=0;//,count0=0,countpl=0,countoppo=0;
+/*
       std::vector<move> movevec3;
 
     getMoveList(grid,((id%2)+1),movevec3);
@@ -769,31 +781,31 @@
     return 1000;
     else if(countoppo>countpl)
      return -1000;
-    }
+    }*/
     for(int i=0;i<6;i++)
     {for(int j=0;j<7;j++)
     {
     if(grid[i][j]==id)
     {if(issafeBox(i,j,id,grid))
-    score+=1;
+    score+=2;
 //else if(issafeBox(i,j,id,grid))
   //  score+=0.5;
     //else
-    score+=2;
+    score+=5;
     }
     else if(grid[i][j]==((id%2)+1))
     {if(issafeBox(i,j,((id%2)+1),grid))
-    score-=1;
+    score-=2;
   // else
    //if(issafeBox(i,j,((id%2)+1),grid))
     //score-=0.3;
     //else
-    score-=1;
+    score-=5;
     }
     else{
-    	
-    	
-    }	
+
+
+    }
     }
 
     }
@@ -804,24 +816,75 @@
 
     // Returns optimal value for current player (Initially called
     // for root and maximizer)
-    double minimax(int depth, int grid[][7], bool maximizingPlayer,int id, double alpha, double beta)
+    double minimax(int depth, int grid[][7], bool maximizingPlayer,int id, double alpha, double beta,bool firstTurn)
     {  // typedef Iter = std::vector<move>::const_iterator;
         // Terminating condition. i.e leaf node is reached
-
+//double time=(std::clock()-start)/do
     //printf("minmax in");
-        if (depth == 4)
+
+  //  std::cout << "f(42) = " << fibonacci(42) << '\n';
+
+    endpt = std::chrono::system_clock::now();
+
+
+//clock code set duration here
+if( std::chrono::duration<double>(endpt-start).count()>0.95)
+        {
+             finalMove=globalvec.front();
+           printf("%d %d\n",finalMove.ini_x,finalMove.ini_y);
+             printf("%d %d\n",finalMove.fin_x,finalMove.fin_y);
+
+             printf("%d\n",Depth);
+             int s=0;
+              for (std::vector<move>::iterator it = globalvec.begin(); it!=globalvec.end(); ++it) {s++;
+               printf("%lf\n",it->movescore);
+                 printf("%d %d\n",it->ini_x,it->ini_y);
+             printf("%d %d\n",it->fin_x,it->fin_y);
+  }               printf("total size %d\n",s);
+           exit(0);
+}
+        if (depth == 1)
         {
        // printf("%d ",getGridScore(grid,id));
             return getGridScore(grid,id);
     }
+
+
+    //maximizing cond starts
         if (maximizingPlayer)
         {
             double best = MIN;
          //   return 1;
 
-    std::vector<move> movevec;
 
-    getMoveList(grid,id,movevec);
+if(firstTurn)
+{
+firstTurn=false;
+ if(globalvec.empty())
+    return getGridScore(grid,id);
+    //std::random_shuffle(movevec.begin(), movevec.end());
+    for (std::vector<move>::iterator it = globalvec.begin(); it!=globalvec.end(); ++it) {
+    int i=0;
+    int gridcpy[6][7];
+    std::copy(&grid[0][0], &grid[0][0]+6*7,&gridcpy[0][0]);
+
+    getChangedGrid(gridcpy,id,*it);
+                double val = minimax(depth-1,gridcpy ,false, id, alpha, beta,firstTurn);
+                it->movescore=val;
+
+                best = std::max(best, val);
+
+                alpha = std::max(alpha, best);
+
+                // Alpha Beta Pruning
+                if (beta <= best)
+                    break;
+                    i++;
+            }
+            return best;
+ }  else
+ { std::vector<move> movevec;
+getMoveList(grid,id,movevec);
             // Recur for left and right children
 
     if(movevec.empty())
@@ -846,11 +909,8 @@
 */
 
     getChangedGrid(gridcpy,id,*it);
-
-
-
-
-                double val = minimax(depth+1,gridcpy ,false, id, alpha, beta);
+                double val = minimax(depth-1,gridcpy ,false, id, alpha, beta,firstTurn);
+                it->movescore=val;
       /*          printf("after change \n");
     for(int i=0;i<6;i++)
       {for(int j=0;j<7;j++)
@@ -862,21 +922,19 @@
      // printf("value scanned\n");
       }*/
    // printf(" value %f\n\n",val);
-                if(best<val&&depth==0)
-                { best = std::max(best, val);
-    finalMove=*it;
-                }
-                else
+              //  if(best<val&&depth==0)
+              //  finalMove=*it;
                 best = std::max(best, val);
 
                 alpha = std::max(alpha, best);
 
                 // Alpha Beta Pruning
-                if (beta <= alpha)
+                if (beta <= best)
                     break;
                     i++;
             }
             return best;
+            }
         }
         else
         {
@@ -895,13 +953,12 @@
     int gridcpy[6][7];
     std::copy(&grid[0][0], &grid[0][0]+6*7,&gridcpy[0][0]);
     getChangedGrid(gridcpy,((id)%2)+1,*it2);
-                double val = minimax(depth+1, gridcpy,
-                                  true, id, alpha, beta);
+                double val = minimax(depth-1, gridcpy,true, id, alpha, beta,firstTurn);
                 best = std::min(best, val);
                 beta = std::min(beta, best);
 
                 // Alpha Beta Pruning
-                if (beta <= alpha)
+                if (best <= alpha)
                     break;
                     j++;
             }
@@ -909,9 +966,9 @@
         }
     }
 
-    // Driver Code
     int main()
-    {
+    { start = std::chrono::system_clock::now();
+
       int grid[6][7];
       for(int i=0;i<6;i++)
       {for(int j=0;j<7;j++)
@@ -922,11 +979,26 @@
       }
       int movenumber,id;
       scanf("%d %d",&movenumber,&id);
-             double value= minimax(0, grid, true, id, MIN, MAX);
-             printf("%d %d\n",finalMove.ini_x,finalMove.ini_y);
+  getMoveList(grid,id,globalvec);
+
+  while(1){
+ double value= minimax(Depth, grid, true, id, MIN, MAX,true);
+ std::sort(globalvec.begin(), globalvec.end(), compareByScore);
+  /*finalMove=globalvec.front();
+           printf("%d %d\n",finalMove.ini_x,finalMove.ini_y);
              printf("%d %d\n",finalMove.fin_x,finalMove.fin_y);
+               int s=0;
+              for (std::vector<move>::iterator it = globalvec.begin(); it!=globalvec.end(); ++it) {s++;
+               printf("%lf\n",it->movescore);
+
+  }
+exit(0);
+ */
+ Depth+=2;
+  }
+
+
 
         return 0;
     }
-
 
